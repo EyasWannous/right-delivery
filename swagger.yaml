@@ -1,0 +1,426 @@
+openapi: 3.0.0
+info:
+  title: Delivery Operations API
+  version: 1.0.0
+  description: Internal admin API and Partner API for the DDD Delivery Backend.
+servers:
+  - url: http://localhost:3000
+    description: Development Server
+components:
+  securitySchemes:
+    PartnerApiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+tags:
+  - name: Captains
+    description: Internal API for managing supply (captains)
+  - name: Orders
+    description: Internal API for managing demand (orders)
+  - name: Reports
+    description: Aggregated reports
+  - name: Partners
+    description: External surface for partner integrations
+
+paths:
+  # ─── ADMIN: CAPTAINS ──────────────────────────────────────────────────────────
+  /captains:
+    post:
+      tags: [Captains]
+      summary: Create a newly registered captain.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, vehicleType]
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                vehicleType:
+                  type: string
+      responses:
+        "201":
+          description: Captain created
+          
+    get:
+      tags: [Captains]
+      summary: List captains based on filters
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+        - name: availability
+          in: query
+          schema:
+            type: string
+            enum: [online, offline]
+      responses:
+        "200":
+          description: A list of captains
+
+  /captains/{id}:
+    get:
+      tags: [Captains]
+      summary: Get a captain by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Captain details
+        "404":
+          description: Captain not found
+
+    put:
+      tags: [Captains]
+      summary: Update a captain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                vehicleType:
+                  type: string
+      responses:
+        "200":
+          description: Updated successfully
+
+    delete:
+      tags: [Captains]
+      summary: Delete a captain permanently
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted successfully
+
+  /captains/{id}/activate:
+    patch:
+      tags: [Captains]
+      summary: Set a captain status to active
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully activated
+
+  /captains/{id}/deactivate:
+    patch:
+      tags: [Captains]
+      summary: Set a captain status to inactive
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully deactivated
+
+  # ─── ADMIN: ORDERS ────────────────────────────────────────────────────────────
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Create a manual administrative order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerName, customerPhone, fullAddress, region, lat, lng]
+              properties:
+                customerName:
+                  type: string
+                customerPhone:
+                  type: string
+                fullAddress:
+                  type: string
+                region:
+                  type: string
+                lat:
+                  type: number
+                lng:
+                  type: number
+      responses:
+        "201":
+          description: Created successfully
+          
+    get:
+      tags: [Orders]
+      summary: List and paginate orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [created, assigned, picked_up, delivered, cancelled]
+        - name: page
+          in: query
+          schema:
+            type: number
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 20
+      responses:
+        "200":
+          description: Paginated orders
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get order details by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order payload
+
+    put:
+      tags: [Orders]
+      summary: Update scalar elements
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customerName:
+                  type: string
+                fullAddress:
+                  type: string
+                region:
+                  type: string
+                lat:
+                  type: number
+                lng:
+                  type: number
+      responses:
+        "200":
+          description: Updated
+
+    delete:
+      tags: [Orders]
+      summary: Delete order permanently
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted successfully
+
+  /orders/{id}/assign:
+    post:
+      tags: [Orders]
+      summary: Assign a captain to this order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [captainId]
+              properties:
+                captainId:
+                  type: string
+      responses:
+        "200":
+          description: Assigned successfully
+
+    delete:
+      tags: [Orders]
+      summary: Unassign the current captain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Unassigned successfully
+
+  /orders/{id}/status:
+    patch:
+      tags: [Orders]
+      summary: Update the specific progression status (pickup/deliver)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [mark_picked_up, mark_delivered]
+      responses:
+        "200":
+          description: Valid transition successful
+
+  /orders/{id}/cancel:
+    patch:
+      tags: [Orders]
+      summary: Abort an active order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully cancelled
+
+  # ─── ADMIN: REPORTS ───────────────────────────────────────────────────────────
+  /reports/captains/order-volume-drop:
+    get:
+      tags: [Reports]
+      summary: Fetch order volume drop aggregation report
+      parameters:
+        - name: previousFrom
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: previousTo
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: currentFrom
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: currentTo
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Volume drops calculated successfully
+
+  # ─── PARTNERS ──────────────────────────────────────────────────────────────────
+  /partner/orders:
+    post:
+      tags: [Partners]
+      summary: Partner API integration for idempotent order dispatch
+      security:
+        - PartnerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerName, customerPhone, fullAddress, region, lat, lng, externalReference]
+              properties:
+                customerName:
+                  type: string
+                customerPhone:
+                  type: string
+                fullAddress:
+                  type: string
+                region:
+                  type: string
+                lat:
+                  type: number
+                lng:
+                  type: number
+                externalReference:
+                  type: string
+      responses:
+        "201":
+          description: Successfully inserted
+        "200":
+          description: Cached / Found identical existing ID
+        "429":
+          description: Rate limited
+        "403":
+          description: Refused API Key
+
+  /partner/orders/{ref}:
+    get:
+      tags: [Partners]
+      summary: Partner API integration for reading existing dispatches using external reference
+      security:
+        - PartnerApiKey: []
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Retrieved matching external ID order
+        "404":
+          description: Non-existent reference
+        "429":
+          description: Rate limited
+        "403":
+          description: Refused API Key
